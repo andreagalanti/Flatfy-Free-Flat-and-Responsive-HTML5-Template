@@ -1,7 +1,7 @@
 /*!
  * jQuery corner plugin: simple corner rounding
  * Examples and documentation at: http://jquery.malsup.com/corner/
- * version 2.11 (15-JUN-2010)
+ * version 2.13 (19-FEB-2013)
  * Requires jQuery v1.3.2 or later
  * Dual licensed under the MIT and GPL licenses:
  * http://www.opensource.org/licenses/mit-license.php
@@ -19,14 +19,16 @@
  */
 ;(function($) { 
 
+var msie = /MSIE/.test(navigator.userAgent);
+
 var style = document.createElement('div').style,
     moz = style['MozBorderRadius'] !== undefined,
     webkit = style['WebkitBorderRadius'] !== undefined,
     radius = style['borderRadius'] !== undefined || style['BorderRadius'] !== undefined,
     mode = document.documentMode || 0,
-    noBottomFold = $.browser.msie && (($.browser.version < 8 && !mode) || mode < 8),
+    noBottomFold = msie && (!mode || mode < 8),
 
-    expr = $.browser.msie && (function() {
+    expr = msie && (function() {
         var div = document.createElement('div');
         try { div.style.setExpression('width','0+0'); div.style.removeExpression('width'); }
         catch(e) { return false; }
@@ -37,12 +39,12 @@ $.support = $.support || {};
 $.support.borderRadius = moz || webkit || radius; // so you can do:  if (!$.support.borderRadius) $('#myDiv').corner();
 
 function sz(el, p) { 
-    return parseInt($.css(el,p))||0; 
-};
+    return parseInt($.css(el,p),10)||0; 
+}
 function hex2(s) {
-    var s = parseInt(s).toString(16);
+    s = parseInt(s,10).toString(16);
     return ( s.length < 2 ) ? '0'+s : s;
-};
+}
 function gpc(node) {
     while(node) {
         var v = $.css(node,'backgroundColor'), rgb;
@@ -58,13 +60,13 @@ function gpc(node) {
         node = node.parentNode; // keep walking if transparent
     }
     return '#ffffff';
-};
+}
 
 function getWidth(fx, i, width) {
     switch(fx) {
     case 'round':  return Math.round(width*(1-Math.cos(Math.asin(i/width))));
     case 'cool':   return Math.round(width*(1+Math.cos(Math.asin(i/width))));
-    case 'sharp':  return Math.round(width*(1-Math.cos(Math.acos(i/width))));
+    case 'sharp':  return width-i;
     case 'bite':   return Math.round(width*(Math.cos(Math.asin((width-i-1)/width))));
     case 'slide':  return Math.round(width*(Math.atan2(i,width/i)));
     case 'jut':    return Math.round(width*(Math.atan2(width,(width-i-1))));
@@ -81,12 +83,14 @@ function getWidth(fx, i, width) {
     case 'notch':  return width; 
     case 'bevelfold':
     case 'bevel':  return i+1;
+    case 'steep':  return i/2 + 1;
+    case 'invsteep':return (width-i)/2+1;
     }
-};
+}
 
 $.fn.corner = function(options) {
     // in 1.3+ we can fix mistakes with the ready state
-    if (this.length == 0) {
+    if (this.length === 0) {
         if (!$.isReady && this.selector) {
             var s = this.selector, c = this.context;
             $(function() {
@@ -103,8 +107,8 @@ $.fn.corner = function(options) {
             keep = /keep/.test(o),                       // keep borders?
             cc = ((o.match(/cc:(#[0-9a-f]+)/)||[])[1]),  // corner color
             sc = ((o.match(/sc:(#[0-9a-f]+)/)||[])[1]),  // strip color
-            width = parseInt((o.match(/(\d+)px/)||[])[1]) || 10, // corner width
-            re = /round|bevelfold|bevel|notch|bite|cool|sharp|slide|jut|curl|tear|fray|wicked|sculpt|long|dog3|dog2|dogfold|dog/,
+            width = parseInt((o.match(/(\d+)px/)||[])[1],10) || 10, // corner width
+            re = /round|bevelfold|bevel|notch|bite|cool|sharp|slide|jut|curl|tear|fray|wicked|sculpt|long|dog3|dog2|dogfold|dog|invsteep|steep/,
             fx = ((o.match(re)||['round'])[0]),
             fold = /dogfold|bevelfold/.test(o),
             edges = { T:0, B:1 },
@@ -142,11 +146,11 @@ $.fn.corner = function(options) {
         });
     
         pad = {
-            T: parseInt($.css(this,'paddingTop'))||0,     R: parseInt($.css(this,'paddingRight'))||0,
-            B: parseInt($.css(this,'paddingBottom'))||0,  L: parseInt($.css(this,'paddingLeft'))||0
+            T: parseInt($.css(this,'paddingTop'),10)||0,     R: parseInt($.css(this,'paddingRight'),10)||0,
+            B: parseInt($.css(this,'paddingBottom'),10)||0,  L: parseInt($.css(this,'paddingLeft'),10)||0
         };
 
-        if (typeof this.style.zoom != undefined) this.style.zoom = 1; // force 'hasLayout' in IE
+        if (typeof this.style.zoom !== undefined) this.style.zoom = 1; // force 'hasLayout' in IE
         if (!keep) this.style.border = 'none';
         strip.style.borderColor = cc || gpc(this.parentNode);
         cssHeight = $(this).outerHeight();
@@ -172,7 +176,7 @@ $.fn.corner = function(options) {
                     else
                         ds.width = '100%';
                 }
-                else if (!bot && $.browser.msie) {
+                else if (!bot && msie) {
                     if ($.css(this,'position') == 'static')
                         this.style.position = 'relative';
                     ds.position = 'absolute';
